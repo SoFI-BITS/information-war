@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: infowar
+      POSTGRES_PASSWORD: infowar
+      POSTGRES_DB: infowar
+    ports:
+      - "54330:5432"
+    volumes:
+      - infowar-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infowar"]
+      interval: 5s
+      retries: 10
+volumes:
+  infowar-db:

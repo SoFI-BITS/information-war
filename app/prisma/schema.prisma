@@ -1,0 +1,319 @@
+// The Information War — PostgreSQL schema.
+//
+// Source of truth: EngineCommand (append-only, ordered). The in-memory engine is
+// rebuilt by replaying it. Every other table is a projection written from engine
+// events, for exports, audits, dashboards and the post-event debrief.
+// Money columns are integer cents. Quantities are integer shares.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Runtime connection (may be a pooler, e.g. Supabase :6543 with ?pgbouncer=true).
+  url       = env("DATABASE_URL")
+  // Direct or session connection used by `prisma migrate` (pgbouncer can't run migrations).
+  directUrl = env("DIRECT_URL")
+}
+
+enum CompetitionStatus {
+  LOBBY
+  RUNNING
+  FINISHED
+}
+
+enum Side {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  LIMIT
+  MARKET
+}
+
+enum OrderStatus {
+  OPEN
+  PARTIAL
+  FILLED
+  CANCELLED
+  UNFILLED
+}
+
+enum Reliability {
+  ACCURATE
+  INCOMPLETE
+  OUTDATED
+  MISLEADING
+}
+
+enum Direction {
+  UP
+  DOWN
+}
+
+model Competition {
+  id              String            @id
+  name            String
+  status          CompetitionStatus @default(LOBBY)
+  scenarioVersion String
+  /// SHA-256 of scenario.json at creation; proves the configuration was not changed mid-event.
+  scenarioHash    String
+  config          Json
+  createdAt       DateTime          @default(now())
+  startedAt       DateTime?
+  finishedAt      DateTime?
+
+  teams       Team[]
+  stocks      Stock[]
+  rounds      Round[]
+  news        PublicNewsItem[]
+  signals     PrivateSignal[]
+  research    ResearchAction[]
+  forecasts   Forecast[]
+  orders      Order[]
+  trades      TradeExecution[]
+  holdings    Holding[]
+  snapshots   PortfolioSnapshot[]
+  events      MarketEvent[]
+  audit       AuditLog[]
+  commands    EngineCommand[]
+}
+
+model Team {
+  id            String   @id
+  competitionId String
+  number        Int
+  name          String
+  /// Login code issued to the team (low-value game credential).
+  code          String
+  /// Intel group (A–F) — organiser-only; never sent to participants.
+  group         String
+  /// Active session token. One device per team; organiser can reset.
+  sessionToken  String?
+  createdAt     DateTime @default(now())
+
+  competition Competition         @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  orders      Order[]
+  holdings    Holding[]
+  snapshots   PortfolioSnapshot[]
+  research    ResearchAction[]
+  forecasts   Forecast[]
+
+  @@unique([competitionId, number])
+  @@unique([competitionId, code])
+}
+
+model Stock {
+  competitionId  String
+  ticker         String
+  name           String
+  sector         String
+  description    String
+  startPriceCents Int
+  volatility     String
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, ticker])
+}
+
+model Round {
+  competitionId String
+  number        Int
+  title         String
+  purpose       String
+  /// Organiser-only narrative of the hidden economic state.
+  hiddenState   String
+  /// Scripted % change of each company's fundamental value (organiser-only).
+  fundamentals  Json
+  startedAt     DateTime?
+  settledAt     DateTime?
+  voidedCount   Int       @default(0)
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, number])
+}
+
+model PublicNewsItem {
+  id            Int    @id @default(autoincrement())
+  competitionId String
+  roundNumber   Int
+  headline      String
+  body          String
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@index([competitionId, roundNumber])
+}
+
+model PrivateSignal {
+  competitionId    String
+  signalKey        String
+  roundNumber      Int
+  ticker           String
+  text             String
+  source           String
+  reliability      Reliability
+  impliedDirection Int
+  targetRound      Int
+  groups           String[]
+  truth            String
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, signalKey])
+}
+
+model ResearchAction {
+  id            Int      @id @default(autoincrement())
+  competitionId String
+  teamId        String
+  researchKey   String
+  roundNumber   Int
+  createdAt     DateTime
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  team        Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, teamId, researchKey])
+}
+
+model Forecast {
+  competitionId String
+  teamId        String
+  roundNumber   Int
+  ticker        String
+  direction     Direction
+  updatedAt     DateTime
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  team        Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, teamId, roundNumber])
+}
+
+model Order {
+  id            String      @id
+  competitionId String
+  teamId        String
+  ticker        String
+  roundNumber   Int
+  side          Side
+  type          OrderType
+  /// Limit price, or the collar price for market orders.
+  priceCents    Int
+  qty           Int
+  remaining     Int
+  filled        Int
+  status        OrderStatus
+  /// Price-time priority sequence (lower = earlier).
+  seq           Int
+  clientOrderId String?
+  submittedAt   DateTime
+  updatedAt     DateTime    @updatedAt
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  team        Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([competitionId, teamId])
+  @@index([competitionId, ticker, status])
+}
+
+model TradeExecution {
+  competitionId String
+  id            String
+  seq           Int
+  roundNumber   Int
+  ticker        String
+  priceCents    Int
+  qty           Int
+  /// "__MM__" for the disclosed market maker; otherwise a Team id. Never exposed to participants.
+  buyTeamId     String
+  sellTeamId    String
+  buyOrderId    String
+  sellOrderId   String
+  aggressor     Side
+  executedAt    DateTime
+  voided        Boolean  @default(false)
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, id])
+  @@index([competitionId, roundNumber, ticker])
+}
+
+model Holding {
+  competitionId  String
+  teamId         String
+  ticker         String
+  shares         Int
+  avgCostCents   Float
+  realizedCents  Float
+  asOfRound      Int
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  team        Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, teamId, ticker])
+}
+
+model PortfolioSnapshot {
+  competitionId      String
+  teamId             String
+  roundNumber        Int
+  cashCents          Int
+  holdingsValueCents Int
+  equityCents        Int
+  realizedCents      Int
+  unrealizedCents    Int
+  rank               Int
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  team        Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, teamId, roundNumber])
+}
+
+/// Round lifecycle and valuation events, e.g. REFERENCE_VALUE (per stock: F, VWAP, RV), ROUND_STARTED, ROUND_VOIDED.
+model MarketEvent {
+  id            Int      @id @default(autoincrement())
+  competitionId String
+  roundNumber   Int
+  ticker        String?
+  kind          String
+  data          Json
+  createdAt     DateTime
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@index([competitionId, roundNumber])
+}
+
+model AuditLog {
+  competitionId String
+  seq           Int
+  actor         String
+  action        String
+  detail        String
+  createdAt     DateTime
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, seq])
+}
+
+/// Append-only engine command log. Replaying it in seq order rebuilds the exact market state.
+model EngineCommand {
+  competitionId String
+  seq           Int
+  type          String
+  payload       Json
+  ts            DateTime
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@id([competitionId, seq])
+}

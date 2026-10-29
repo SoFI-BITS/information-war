@@ -1,0 +1,974 @@
+{
+  "meta": {
+    "name": "The Information War",
+    "version": "1.0",
+    "setting": "The Republic of Valdoria",
+    "currency": "credits",
+    "lockedAt": null,
+    "note": "Single source of truth for the event. The server, the docs generator and the spreadsheet all read this file. Lock it (set lockedAt) before round 1; never edit it during the event."
+  },
+  "params": {
+    "startingCapital": 100000,
+    "startingCash": 60000,
+    "endowmentPerStock": 4000,
+    "rounds": 10,
+    "newsSeconds": 20,
+    "tradingSeconds": 200,
+    "settleSeconds": 20,
+    "maxPositionValuePerStock": 30000,
+    "maxOrderNotional": 12000,
+    "maxOpenOrders": 25,
+    "rateLimit": {
+      "count": 20,
+      "windowSeconds": 10
+    },
+    "marketOrderCollarPct": 3,
+    "limitPriceBandPct": 25,
+    "researchCredits": 3,
+    "groups": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F"
+    ],
+    "referenceValue": {
+      "weight": 0.3,
+      "capPct": 6,
+      "minVolumeShares": 150,
+      "minTrades": 5,
+      "minDistinctTeams": 3
+    },
+    "marketMaker": {
+      "halfSpreadPct": 1.0,
+      "levelStepPct": 1.0,
+      "levels": 3,
+      "levelNotional": 6000,
+      "skewPctPer10k": 1.0,
+      "maxSkewPct": 8
+    },
+    "forecastPoints": 1
+  },
+  "stocks": [
+    {
+      "ticker": "NVTX",
+      "name": "Novatex Devices",
+      "sector": "Consumer technology",
+      "description": "Smartphones, wearables and home devices. Relies on imported components; launches a flagship handset this season.",
+      "startPrice": 142,
+      "volatility": "Very high",
+      "links": "Buys components from Forgeline. Sensitive to interest rates (growth stock)."
+    },
+    {
+      "ticker": "HBFG",
+      "name": "Harbourline Financial Group",
+      "sector": "Banking and financial services",
+      "description": "Valdoria's third-largest bank: retail deposits, business lending and a trading desk.",
+      "startPrice": 88,
+      "volatility": "High",
+      "links": "Earns more when interest rates rise. Lends to Solaris Ridge and Tidewell."
+    },
+    {
+      "ticker": "PTRL",
+      "name": "Petralis Energy",
+      "sector": "Energy",
+      "description": "Oil and gas producer with offshore fields and a fuel distribution arm.",
+      "startPrice": 74,
+      "volatility": "High",
+      "links": "Competes with renewables for energy policy. Exports priced in foreign currency."
+    },
+    {
+      "ticker": "CLVH",
+      "name": "Calvera Health",
+      "sector": "Healthcare",
+      "description": "Pharmaceutical developer. Its lead drug VX-7 (arthritis) is in late-stage trials.",
+      "startPrice": 126,
+      "volatility": "Very high",
+      "links": "Value depends heavily on VX-7 regulatory outcome and competitors."
+    },
+    {
+      "ticker": "MRLW",
+      "name": "Marlowe & Kent",
+      "sector": "Retail and consumer goods",
+      "description": "Department stores and online retail. Holiday season is half of annual profit.",
+      "startPrice": 64,
+      "volatility": "High",
+      "links": "Imports most holiday stock through the Port of Ashmouth. Sensitive to consumer spending."
+    },
+    {
+      "ticker": "FRGE",
+      "name": "Forgeline Industries",
+      "sector": "Industrial manufacturing",
+      "description": "Precision components: electronics parts, gearboxes and industrial bearings.",
+      "startPrice": 96,
+      "volatility": "High",
+      "links": "Supplies Novatex and the wind-turbine industry. Depends on imported bearings."
+    },
+    {
+      "ticker": "TDWL",
+      "name": "Tidewell Logistics",
+      "sector": "Logistics and shipping",
+      "description": "Container terminals, trucking and Valdoria's only inland rail-freight corridor.",
+      "startPrice": 68,
+      "volatility": "High",
+      "links": "Fuel is a major cost. Moves goods for Marlowe & Kent and Greenfield."
+    },
+    {
+      "ticker": "ARCM",
+      "name": "Arcwave Communications",
+      "sector": "Telecommunications",
+      "description": "Mobile and broadband network operator with high debt from its 5G build-out.",
+      "startPrice": 82,
+      "volatility": "High",
+      "links": "Debt-heavy, so sensitive to interest rates. Bidding in the 6G spectrum auction."
+    },
+    {
+      "ticker": "GRNF",
+      "name": "Greenfield Harvest Foods",
+      "sector": "Agriculture and food",
+      "description": "Grain, dairy and packaged foods. Exports a large share of its output.",
+      "startPrice": 61,
+      "volatility": "High",
+      "links": "Exports via the Port of Ashmouth. Harvest yields drive annual results."
+    },
+    {
+      "ticker": "SLRD",
+      "name": "Solaris Ridge Renewables",
+      "sector": "Renewable infrastructure",
+      "description": "Builds and operates solar and wind farms financed with long-term borrowing.",
+      "startPrice": 110,
+      "volatility": "Very high",
+      "links": "Depends on government subsidy policy and interest rates. Buys gearboxes from Forgeline."
+    }
+  ],
+  "sources": {
+    "RUMOUR": {
+      "label": "Market chatter",
+      "statedReliability": "Low"
+    },
+    "CONTACT": {
+      "label": "Industry contact",
+      "statedReliability": "Medium"
+    },
+    "ANALYST": {
+      "label": "Analyst research",
+      "statedReliability": "Medium-high"
+    }
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "title": "Initial Positions",
+      "purpose": "Teach the market and establish opening beliefs. Calm round, no shock.",
+      "hiddenState": "Economy steady. Small, mostly positive drifts. Petralis licence decision quietly delayed.",
+      "news": [
+        {
+          "headline": "Valdoria GDP grows 1.8%, in line with forecasts",
+          "body": "The Statistics Office reports steady third-quarter growth. Consumer confidence is unchanged. Novatex confirms its flagship handset launches next month."
+        },
+        {
+          "headline": "Energy ministry to rule on new offshore licences 'in due course'",
+          "body": "Petralis Energy is among the applicants. No date has been set."
+        }
+      ],
+      "fundamentals": {
+        "NVTX": 3,
+        "HBFG": 1,
+        "PTRL": -2,
+        "CLVH": 2,
+        "MRLW": 1,
+        "FRGE": 2,
+        "TDWL": 0,
+        "ARCM": -1,
+        "GRNF": 1,
+        "SLRD": 3
+      },
+      "signals": [
+        {
+          "id": "S1-1",
+          "ticker": "NVTX",
+          "source": "CONTACT",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 1,
+          "text": "Novatex handset pre-orders are tracking ahead of last year's launch.",
+          "truth": "True. Small positive effect this round.",
+          "groups": [
+            "A",
+            "D"
+          ]
+        },
+        {
+          "id": "S1-2",
+          "ticker": "PTRL",
+          "source": "RUMOUR",
+          "reliability": "MISLEADING",
+          "impliedDirection": 1,
+          "targetRound": 1,
+          "text": "Petralis is about to be awarded a large new offshore licence.",
+          "truth": "False. The decision was delayed indefinitely.",
+          "groups": [
+            "B",
+            "E"
+          ]
+        },
+        {
+          "id": "S1-3",
+          "ticker": "SLRD",
+          "source": "ANALYST",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 1,
+          "text": "Solaris Ridge's quarterly installations came in slightly above plan.",
+          "truth": "True. Small positive effect.",
+          "groups": [
+            "C",
+            "F"
+          ]
+        }
+      ],
+      "research": [
+        {
+          "id": "R1-1",
+          "title": "Petralis licence: second source",
+          "result": "A ministry official says no licence decisions will be made this quarter."
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "title": "Conflicting Signals",
+      "purpose": "Test trust in private information versus public evidence. Signals about Novatex conflict.",
+      "hiddenState": "Novatex margin compression is structural (component costs), outweighing strong unit sales. Calvera interim data genuinely strong.",
+      "news": [
+        {
+          "headline": "Novatex: revenue up 14%, gross margin falls from 41% to 36%",
+          "body": "Management calls the margin decline 'temporary' but gives no timetable."
+        },
+        {
+          "headline": "Calvera publishes interim VX-7 trial data",
+          "body": "The arthritis drug shows a 'statistically significant' improvement. Full data and a regulatory decision are expected later this season."
+        }
+      ],
+      "fundamentals": {
+        "NVTX": -7,
+        "HBFG": 2,
+        "PTRL": 1,
+        "CLVH": 5,
+        "MRLW": -1,
+        "FRGE": -2,
+        "TDWL": 1,
+        "ARCM": 0,
+        "GRNF": 2,
+        "SLRD": 1
+      },
+      "signals": [
+        {
+          "id": "S2-1",
+          "ticker": "NVTX",
+          "source": "CONTACT",
+          "reliability": "INCOMPLETE",
+          "impliedDirection": 1,
+          "targetRound": 2,
+          "text": "Retail channel checks: stores are reordering Novatex devices; demand is strong.",
+          "truth": "Demand really is strong, but margins matter more to value. Stock fell.",
+          "groups": [
+            "D",
+            "F"
+          ]
+        },
+        {
+          "id": "S2-2",
+          "ticker": "CLVH",
+          "source": "ANALYST",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 2,
+          "text": "Detailed VX-7 tables show the effect size is larger than the headline suggests.",
+          "truth": "True.",
+          "groups": [
+            "B",
+            "C"
+          ]
+        },
+        {
+          "id": "S2-3",
+          "ticker": "NVTX",
+          "source": "ANALYST",
+          "reliability": "ACCURATE",
+          "impliedDirection": -1,
+          "targetRound": 2,
+          "text": "Novatex's margin decline will continue into next year as component contracts reprice.",
+          "truth": "True. The margin issue is structural.",
+          "groups": [
+            "A",
+            "E"
+          ]
+        }
+      ],
+      "research": [
+        {
+          "id": "R2-1",
+          "title": "Novatex margin breakdown",
+          "result": "Component costs rose 9% and are locked in by annual contracts. No margin recovery is guided for next quarter."
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "title": "Crowd Behaviour",
+      "purpose": "Make anonymous order flow strategically relevant. Teams decide whether flow is information or noise.",
+      "hiddenState": "Subsidy hearings are genuinely positive for renewables and their suppliers. Spectrum auction will be expensive for Arcwave.",
+      "news": [
+        {
+          "headline": "Parliament opens hearings on the Renewable Infrastructure Subsidy Act",
+          "body": "A vote is expected later this season. Energy producers warn of higher carbon costs."
+        },
+        {
+          "headline": "Telecom regulator opens consultation on the 6G spectrum auction",
+          "body": "Reserve prices have not been published."
+        }
+      ],
+      "fundamentals": {
+        "NVTX": 2,
+        "HBFG": 0,
+        "PTRL": -4,
+        "CLVH": 1,
+        "MRLW": 2,
+        "FRGE": 3,
+        "TDWL": 1,
+        "ARCM": -3,
+        "GRNF": -1,
+        "SLRD": 8
+      },
+      "forecast": {
+        "ticker": "SLRD",
+        "question": "Will SLRD's reference value finish this round higher or lower than it started?"
+      },
+      "signals": [
+        {
+          "id": "S3-1",
+          "ticker": "SLRD",
+          "source": "CONTACT",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 3,
+          "text": "A large institutional fund is quietly accumulating renewable-infrastructure stocks.",
+          "truth": "True, and the fundamentals supported it.",
+          "groups": [
+            "D",
+            "E"
+          ]
+        },
+        {
+          "id": "S3-2",
+          "ticker": "ARCM",
+          "source": "RUMOUR",
+          "reliability": "MISLEADING",
+          "impliedDirection": 1,
+          "targetRound": 3,
+          "text": "Arcwave expects to win 6G spectrum cheaply because few rivals will bid.",
+          "truth": "False. Reserve prices will be high.",
+          "groups": [
+            "A",
+            "C"
+          ]
+        },
+        {
+          "id": "S3-3",
+          "ticker": "FRGE",
+          "source": "CONTACT",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 3,
+          "text": "Forgeline has quietly signed a supply deal for wind-turbine gearboxes.",
+          "truth": "True. Second-order beneficiary of the subsidy story.",
+          "groups": [
+            "B",
+            "F"
+          ]
+        }
+      ],
+      "research": [
+        {
+          "id": "R3-1",
+          "title": "6G auction reserve prices",
+          "result": "Draft documents suggest reserve prices roughly double the last auction."
+        }
+      ]
+    },
+    {
+      "round": 4,
+      "title": "Supply-Chain Discovery",
+      "purpose": "Test second-order reasoning. One disruption helps one company and hurts others.",
+      "hiddenState": "Port strike hurts importers and exporters; Tidewell's inland rail corridor earns emergency surcharges and is a net winner.",
+      "news": [
+        {
+          "headline": "Dockworkers' strike shuts the Port of Ashmouth",
+          "body": "Valdoria's largest container port is expected to remain closed for about ten days. Ships are queuing offshore."
+        }
+      ],
+      "fundamentals": {
+        "NVTX": -3,
+        "HBFG": 0,
+        "PTRL": 2,
+        "CLVH": 0,
+        "MRLW": -9,
+        "FRGE": -5,
+        "TDWL": 9,
+        "ARCM": 1,
+        "GRNF": -6,
+        "SLRD": -2
+      },
+      "signals": [
+        {
+          "id": "S4-1",
+          "ticker": "TDWL",
+          "source": "CONTACT",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 4,
+          "text": "Tidewell's rail-freight corridor is fully booked at emergency rates for the next month.",
+          "truth": "True. Tidewell is a net winner from the strike.",
+          "groups": [
+            "A",
+            "F"
+          ]
+        },
+        {
+          "id": "S4-2",
+          "ticker": "MRLW",
+          "source": "RUMOUR",
+          "reliability": "MISLEADING",
+          "impliedDirection": 1,
+          "targetRound": 4,
+          "text": "Marlowe & Kent brought its holiday stock in early this year, before the strike.",
+          "truth": "False. Most holiday stock is stuck on ships at Ashmouth.",
+          "groups": [
+            "B",
+            "D"
+          ]
+        },
+        {
+          "id": "S4-3",
+          "ticker": "FRGE",
+          "source": "ANALYST",
+          "reliability": "ACCURATE",
+          "impliedDirection": -1,
+          "targetRound": 4,
+          "text": "Forgeline's critical imported bearings are sitting in containers at Ashmouth.",
+          "truth": "True. Production delays.",
+          "groups": [
+            "C",
+            "E"
+          ]
+        }
+      ],
+      "research": [
+        {
+          "id": "R4-1",
+          "title": "Who depends on Ashmouth?",
+          "result": "Marlowe & Kent: ~70% of holiday imports. Greenfield: ~40% of exports. Forgeline: key bearings. Tidewell runs the only inland rail alternative."
+        }
+      ]
+    },
+    {
+      "round": 5,
+      "title": "Macroeconomic Shift",
+      "purpose": "Introduce cross-stock relationships. A rate shock moves sectors in different directions.",
+      "hiddenState": "Rate hike: banks win; leveraged and growth companies lose; defensives hold up.",
+      "news": [
+        {
+          "headline": "Central Bank surprises with a 0.75-point rate rise",
+          "body": "The Bank signals further increases to fight inflation. The Valdorian crown strengthens sharply against major currencies."
+        }
+      ],
+      "fundamentals": {
+        "NVTX": -8,
+        "HBFG": 10,
+        "PTRL": -3,
+        "CLVH": 2,
+        "MRLW": -5,
+        "FRGE": -4,
+        "TDWL": -2,
+        "ARCM": -4,
+        "GRNF": 1,
+        "SLRD": -12
+      },
+      "signals": [
+        {
+          "id": "S5-1",
+          "ticker": "HBFG",
+          "source": "CONTACT",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 5,
+          "text": "Harbourline's treasury desk expects its lending margin to widen sharply after the hike.",
+          "truth": "True.",
+          "groups": [
+            "B",
+            "E"
+          ]
+        },
+        {
+          "id": "S5-2",
+          "ticker": "ARCM",
+          "source": "ANALYST",
+          "reliability": "OUTDATED",
+          "impliedDirection": 1,
+          "targetRound": 5,
+          "text": "Arcwave refinanced all of its debt at fixed rates, so rate rises won't hurt it.",
+          "truth": "Outdated. Only half was refinanced; the rest floats.",
+          "groups": [
+            "C",
+            "F"
+          ]
+        },
+        {
+          "id": "S5-3",
+          "ticker": "SLRD",
+          "source": "RUMOUR",
+          "reliability": "MISLEADING",
+          "impliedDirection": 1,
+          "targetRound": 5,
+          "text": "Solaris Ridge is about to announce a state-guaranteed loan that shields it from rate rises.",
+          "truth": "False. Talks collapsed.",
+          "groups": [
+            "A",
+            "D"
+          ]
+        }
+      ],
+      "research": [
+        {
+          "id": "R5-1",
+          "title": "Debt and rate-sensitivity table",
+          "result": "Floating-rate debt as share of total: Solaris Ridge 65%, Arcwave 50%, Tidewell 30%, Novatex 10%. Harbourline earns more on floating-rate loans."
+        }
+      ]
+    },
+    {
+      "round": 6,
+      "title": "Rumour and Verification",
+      "purpose": "Make research credits valuable. Two rumours: one partly true, one false.",
+      "hiddenState": "VX-7 approval comes with a restricted label (smaller market than hoped). Arcwave takeover is false. Port strike settles.",
+      "news": [
+        {
+          "headline": "Reports: Calvera's VX-7 approval 'imminent'",
+          "body": "Unconfirmed reports say the regulator will approve the arthritis drug this week."
+        },
+        {
+          "headline": "Blog claims Arcwave is a takeover target",
+          "body": "A financial blog says a foreign operator is preparing a bid. Arcwave declined to comment."
+        }
+      ],
+      "fundamentals": {
+        "NVTX": 3,
+        "HBFG": 2,
+        "PTRL": 4,
+        "CLVH": 6,
+        "MRLW": 3,
+        "FRGE": 4,
+        "TDWL": -6,
+        "ARCM": -2,
+        "GRNF": 4,
+        "SLRD": 2
+      },
+      "forecast": {
+        "ticker": "CLVH",
+        "question": "Will CLVH's reference value finish this round higher or lower than it started?"
+      },
+      "signals": [
+        {
+          "id": "S6-1",
+          "ticker": "CLVH",
+          "source": "CONTACT",
+          "reliability": "INCOMPLETE",
+          "impliedDirection": 1,
+          "targetRound": 6,
+          "text": "A regulator staffer says VX-7 approval is 'a formality'.",
+          "truth": "Approval is real, but the label is restricted to severe cases. Gain smaller than the hype.",
+          "groups": [
+            "C",
+            "D"
+          ]
+        },
+        {
+          "id": "S6-2",
+          "ticker": "ARCM",
+          "source": "RUMOUR",
+          "reliability": "MISLEADING",
+          "impliedDirection": 1,
+          "targetRound": 6,
+          "text": "Arcwave's board has hired investment bankers.",
+          "truth": "True fact, wrong meaning: the bankers are arranging a bond issue, not a sale.",
+          "groups": [
+            "E",
+            "F"
+          ]
+        },
+        {
+          "id": "S6-3",
+          "ticker": "TDWL",
+          "source": "ANALYST",
+          "reliability": "ACCURATE",
+          "impliedDirection": -1,
+          "targetRound": 6,
+          "text": "The Ashmouth strike was settled overnight; the port reopens tomorrow.",
+          "truth": "True. Tidewell's surcharges end; importers and exporters recover.",
+          "groups": [
+            "A",
+            "B"
+          ]
+        }
+      ],
+      "research": [
+        {
+          "id": "R6-1",
+          "title": "Verify the VX-7 approval rumour",
+          "result": "Second source: approval is expected, but the label will likely be restricted to severe cases (about a third of the target market)."
+        },
+        {
+          "id": "R6-2",
+          "title": "Verify the Arcwave takeover rumour",
+          "result": "Second source: the banker mandate is for a bond refinancing. No bidder has been identified."
+        },
+        {
+          "id": "R6-3",
+          "title": "Port of Ashmouth status",
+          "result": "Union and port authority have a draft agreement; vote scheduled tonight."
+        }
+      ]
+    },
+    {
+      "round": 7,
+      "title": "Liquidity Shock",
+      "purpose": "Test execution and risk management. Market-maker capacity drops, spreads widen (pre-announced in the rulebook).",
+      "hiddenState": "Harbourline's hedge-fund exposure is larger than admitted. Broad risk-off move.",
+      "news": [
+        {
+          "headline": "Hedge fund Corvane Capital collapses",
+          "body": "Harbourline Financial confirms 'manageable' exposure. Several lenders are reviewing positions."
+        },
+        {
+          "headline": "Exchange notice: reduced liquidity this round",
+          "body": "As set out in the rulebook, market-maker spreads are wider and depth is thinner in all stocks for Round 7."
+        }
+      ],
+      "fundamentals": {
+        "NVTX": -3,
+        "HBFG": -9,
+        "PTRL": 2,
+        "CLVH": 1,
+        "MRLW": -2,
+        "FRGE": -3,
+        "TDWL": -2,
+        "ARCM": -3,
+        "GRNF": 1,
+        "SLRD": -4
+      },
+      "marketMaker": {
+        "halfSpreadPct": 3.0,
+        "levelStepPct": 1.5,
+        "levels": 2,
+        "levelNotional": 2500,
+        "skewPctPer10k": 2.0,
+        "maxSkewPct": 12
+      },
+      "signals": [
+        {
+          "id": "S7-1",
+          "ticker": "HBFG",
+          "source": "ANALYST",
+          "reliability": "ACCURATE",
+          "impliedDirection": -1,
+          "targetRound": 7,
+          "text": "Harbourline's Corvane exposure is about three times the amount it has disclosed.",
+          "truth": "True.",
+          "groups": [
+            "C",
+            "D"
+          ]
+        },
+        {
+          "id": "S7-2",
+          "ticker": "HBFG",
+          "source": "RUMOUR",
+          "reliability": "MISLEADING",
+          "impliedDirection": 1,
+          "targetRound": 7,
+          "text": "Bargain hunters are lining up for Harbourline; the sell-off is overdone.",
+          "truth": "False. Losses were larger than disclosed.",
+          "groups": [
+            "B",
+            "F"
+          ]
+        },
+        {
+          "id": "S7-3",
+          "ticker": "PTRL",
+          "source": "CONTACT",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 7,
+          "text": "Petralis has hedged most of next year's output at today's high prices.",
+          "truth": "True. Small positive effect; defensive in a risk-off market.",
+          "groups": [
+            "A",
+            "E"
+          ]
+        }
+      ],
+      "research": [
+        {
+          "id": "R7-1",
+          "title": "Independent Harbourline exposure estimate",
+          "result": "Exposure is roughly 4% of the bank's equity: painful, not fatal. Dividend at risk."
+        }
+      ]
+    },
+    {
+      "round": 8,
+      "title": "The Narrative Breaks",
+      "purpose": "Challenge previously successful assumptions. The renewables and Calvera stories reverse.",
+      "hiddenState": "Subsidy act withdrawn for good; energy policy swings back to fossil fuels. A rival drug beats VX-7. Novatex launch succeeds.",
+      "news": [
+        {
+          "headline": "Budget crisis: government withdraws the Renewable Subsidy Act",
+          "body": "The Treasury announces a full review of energy policy."
+        },
+        {
+          "headline": "Ostrava Pharma launches rival arthritis drug",
+          "body": "Its trial results beat VX-7 and it will be sold at a lower price."
+        }
+      ],
+      "fundamentals": {
+        "NVTX": 5,
+        "HBFG": 3,
+        "PTRL": 14,
+        "CLVH": -12,
+        "MRLW": 4,
+        "FRGE": -6,
+        "TDWL": 2,
+        "ARCM": 3,
+        "GRNF": 0,
+        "SLRD": -20
+      },
+      "signals": [
+        {
+          "id": "S8-1",
+          "ticker": "SLRD",
+          "source": "CONTACT",
+          "reliability": "MISLEADING",
+          "impliedDirection": 1,
+          "targetRound": 8,
+          "text": "Ministry insiders say the subsidy withdrawal is temporary; the act returns within weeks.",
+          "truth": "False. No reintroduction before the next election.",
+          "groups": [
+            "C",
+            "E"
+          ]
+        },
+        {
+          "id": "S8-2",
+          "ticker": "NVTX",
+          "source": "CONTACT",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 8,
+          "text": "Novatex's new handset sold out in its first weekend.",
+          "truth": "True.",
+          "groups": [
+            "D",
+            "F"
+          ]
+        },
+        {
+          "id": "S8-3",
+          "ticker": "CLVH",
+          "source": "ANALYST",
+          "reliability": "OUTDATED",
+          "impliedDirection": 1,
+          "targetRound": 8,
+          "text": "Ostrava's drug faces manufacturing problems that will limit supply for a year.",
+          "truth": "Outdated. The problems were fixed last month.",
+          "groups": [
+            "A",
+            "B"
+          ]
+        }
+      ],
+      "research": [
+        {
+          "id": "R8-1",
+          "title": "Will the subsidy act return?",
+          "result": "Treasury sources: no reintroduction before the next election."
+        },
+        {
+          "id": "R8-2",
+          "title": "Ostrava manufacturing check",
+          "result": "Ostrava's plant passed regulatory inspection last month. Supply constraints are resolved."
+        }
+      ]
+    },
+    {
+      "round": 9,
+      "title": "Final Intelligence",
+      "purpose": "Weigh new evidence against existing positions. Balanced final clues; one points to next round.",
+      "hiddenState": "Inflation cooling: rate-sensitive stocks rebound, banks give back gains. Arcwave deal is genuinely valuable.",
+      "news": [
+        {
+          "headline": "Inflation falls faster than expected",
+          "body": "Economists now expect the Central Bank to pause rate rises."
+        },
+        {
+          "headline": "Arcwave signs network-sharing deal with a regional operator",
+          "body": "Financial terms were not disclosed."
+        }
+      ],
+      "fundamentals": {
+        "NVTX": 4,
+        "HBFG": -4,
+        "PTRL": -3,
+        "CLVH": -2,
+        "MRLW": 5,
+        "FRGE": 3,
+        "TDWL": 2,
+        "ARCM": 8,
+        "GRNF": 3,
+        "SLRD": 5
+      },
+      "forecast": {
+        "ticker": "ARCM",
+        "question": "Will ARCM's reference value finish this round higher or lower than it started?"
+      },
+      "signals": [
+        {
+          "id": "S9-1",
+          "ticker": "ARCM",
+          "source": "ANALYST",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 9,
+          "text": "Arcwave's network-sharing deal cuts its capital spending by about a quarter.",
+          "truth": "True.",
+          "groups": [
+            "B",
+            "C"
+          ]
+        },
+        {
+          "id": "S9-2",
+          "ticker": "GRNF",
+          "source": "CONTACT",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 10,
+          "text": "Greenfield's harvest yields hit a record; it reports full-year results next round.",
+          "truth": "True. The payoff arrives in Round 10, not Round 9.",
+          "groups": [
+            "A",
+            "F"
+          ]
+        },
+        {
+          "id": "S9-3",
+          "ticker": "HBFG",
+          "source": "RUMOUR",
+          "reliability": "MISLEADING",
+          "impliedDirection": 1,
+          "targetRound": 9,
+          "text": "Harbourline will announce a large special dividend at year-end.",
+          "truth": "False. The dividend is suspended in Round 10.",
+          "groups": [
+            "D",
+            "E"
+          ]
+        }
+      ],
+      "research": [
+        {
+          "id": "R9-1",
+          "title": "Extra macro indicator: core inflation",
+          "result": "Core inflation 2.1%, down from 3.4% two months ago."
+        }
+      ]
+    },
+    {
+      "round": 10,
+      "title": "The Endgame",
+      "purpose": "Close cleanly. Same rules and limits; no special final mechanic.",
+      "hiddenState": "Full-year results: consumer recovery, record harvest, Harbourline suspends dividend, freight normalises.",
+      "news": [
+        {
+          "headline": "Results day: all ten companies report full-year numbers",
+          "body": "Headline: Valdoria avoids recession as consumer spending recovers. This is the final trading round."
+        }
+      ],
+      "fundamentals": {
+        "NVTX": 2,
+        "HBFG": -5,
+        "PTRL": 3,
+        "CLVH": 3,
+        "MRLW": 6,
+        "FRGE": 2,
+        "TDWL": -3,
+        "ARCM": 2,
+        "GRNF": 7,
+        "SLRD": -3
+      },
+      "signals": [
+        {
+          "id": "S10-1",
+          "ticker": "MRLW",
+          "source": "CONTACT",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 10,
+          "text": "Marlowe & Kent's holiday sales are running 9% above last year.",
+          "truth": "True.",
+          "groups": [
+            "B",
+            "D"
+          ]
+        },
+        {
+          "id": "S10-2",
+          "ticker": "TDWL",
+          "source": "RUMOUR",
+          "reliability": "MISLEADING",
+          "impliedDirection": 1,
+          "targetRound": 10,
+          "text": "Tidewell will announce a large share buyback with its results.",
+          "truth": "False. Freight volumes normalise and no buyback is announced.",
+          "groups": [
+            "A",
+            "C"
+          ]
+        },
+        {
+          "id": "S10-3",
+          "ticker": "CLVH",
+          "source": "ANALYST",
+          "reliability": "ACCURATE",
+          "impliedDirection": 1,
+          "targetRound": 10,
+          "text": "Calvera's full-year results include a one-off licensing gain.",
+          "truth": "True. Modest positive effect.",
+          "groups": [
+            "E",
+            "F"
+          ]
+        }
+      ],
+      "research": [
+        {
+          "id": "R10-1",
+          "title": "Harbourline dividend check",
+          "result": "Board minutes show the dividend is 'under review' because of Corvane losses."
+        }
+      ]
+    }
+  ]
+}
