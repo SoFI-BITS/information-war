@@ -36,8 +36,8 @@ export function OrderTicket({ stock, team, pub, emit, pickedPrice }: { stock: Pu
   const q = Math.floor(Number(qty) || 0);
   const px = type === "LIMIT" ? Math.round(Number(price) * 100) : (side === "BUY" ? stock.asks[0]?.price : stock.bids[0]?.price) ?? stock.rv;
   const value = q * px;
-  const rules = pub.rules as { maxOrderNotional: number; marketOrderCollarPct: number; limitPriceBandPct: number };
-  const maxQtyByValue = Math.floor((rules.maxOrderNotional * 100) / Math.max(px, 1));
+  const rules = pub.rules as { maxBuyOrderNotional: number; marketOrderCollarPct: number; limitPriceBandPct: number };
+  const maxQtyByValue = Math.floor((rules.maxBuyOrderNotional * 100) / Math.max(px, 1));
   const availShares = pos.shares - pos.reservedShares;
   const trading = pub.phase === "TRADING" && !pub.paused;
 
@@ -92,13 +92,11 @@ export function OrderTicket({ stock, team, pub, emit, pickedPrice }: { stock: Pu
         </div>
         <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
           <dt className="text-muted">Est. value</dt>
-          <dd className={`num text-right ${value > rules.maxOrderNotional * 100 ? "text-down" : ""}`}>{money(value)}</dd>
+          <dd className={`num text-right ${side === "BUY" && value > rules.maxBuyOrderNotional * 100 ? "text-down" : ""}`}>{money(value)}</dd>
           <dt className="text-muted">{side === "BUY" ? "Available cash" : "Available shares"}</dt>
           <dd className="num text-right">{side === "BUY" ? money(team.availableCash) : availShares}</dd>
           <dt className="text-muted">Max per order</dt>
-          <dd className="num text-right">
-            {money(rules.maxOrderNotional * 100, 0)} (~{maxQtyByValue} sh)
-          </dd>
+          <dd className="num text-right">{side === "BUY" ? `${money(rules.maxBuyOrderNotional * 100, 0)} (~${maxQtyByValue} sh)` : "no limit"}</dd>
           <dt className="text-muted">Position / limit</dt>
           <dd className="num text-right">
             {pos.shares} / {pos.maxShares}

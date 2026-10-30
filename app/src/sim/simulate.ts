@@ -52,7 +52,7 @@ function runOnce(seed: number) {
     if (side === "SELL") qty = Math.min(qty, acc.positions[ticker].shares - acc.reservedShares[ticker]);
     if (side === "BUY") {
       const room = m.maxShares[ticker] - acc.positions[ticker].shares;
-      qty = Math.min(qty, room, Math.floor((m.params.maxOrderNotional * 100) / (m.rvStart[ticker] * 1.06)));
+      qty = Math.min(qty, room, Math.floor((m.params.maxBuyOrderNotional * 100) / (m.rvStart[ticker] * 1.06)));
     }
     if (qty < 1) return;
     const ref = best?.price ?? m.rvStart[ticker];

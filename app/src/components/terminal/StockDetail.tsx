@@ -1,6 +1,7 @@
 "use client";
 import type { PublicStock } from "@/engine/views";
 import { change, money, pct, tone } from "@/lib/format";
+import { ProfileFacts } from "./Companies";
 import { Sparkline } from "./Watchlist";
 
 /** Reference value per round (bars) with this round's trade prices (line). */
@@ -78,8 +79,16 @@ export function StockDetail({ stock }: { stock: PublicStock }) {
       </div>
       <RvChart stock={stock} />
       <p className="text-xs text-muted">
-        {stock.description} <span className="text-text/70">Links: {stock.links}</span>
+        {stock.profile?.overview ?? stock.description} <span className="text-text/70">Links: {stock.links}</span>
       </p>
+      {stock.profile && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs font-semibold text-info">Company profile</summary>
+          <div className="mt-2">
+            <ProfileFacts stock={stock} compact />
+          </div>
+        </details>
+      )}
     </section>
   );
 }

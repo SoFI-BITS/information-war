@@ -10,8 +10,8 @@ import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import next from "next";
 import { Server, type Socket } from "socket.io";
-import { Market } from "../engine/market";
-import type { Command } from "../engine/types";
+import { Market, TIMED_PHASES } from "../engine/market";
+import { type Command, LEGACY_OPTIONS } from "../engine/types";
 import { adminView, publicView, teamView } from "../engine/views";
 import { DEFAULT_SCENARIO_PATH, loadScenario } from "../scenario/load";
 import { exportCsv } from "./exports";
@@ -61,7 +61,7 @@ async function openCompetition(id: string) {
   console.log(`[market] competition ${id} (${store.kind} store): replayed ${log.length} commands → round ${market.round} ${market.phase}`);
   // The wall clock kept running while the server was down. Never let a restart
   // silently close a round: pause it and let the organiser resume deliberately.
-  if (["NEWS", "TRADING", "SETTLING"].includes(market.phase) && !market.paused) {
+  if (TIMED_PHASES.includes(market.phase) && !market.paused) {
     exec({ type: "PAUSE", ts: Date.now() });
     exec({ type: "ADMIN_AUDIT", ts: Date.now(), action: "AUTO_PAUSE", detail: "Server restarted mid-round; market paused until the organiser resumes" });
     console.log("[market] auto-paused after restart — resume from the organiser console");
@@ -232,7 +232,8 @@ function onConnection(io: Server, socket: Socket) {
           used.add(code);
           return { id: `team-${i + 1}-${randomBytes(3).toString("hex")}`, number: i + 1, name: c.names?.[i]?.trim() || `Team ${String(i + 1).padStart(2, "0")}`, code };
         });
-        const res = exec({ type: "SETUP_TEAMS", ts, teams });
+        const options = c.options ?? LEGACY_OPTIONS;
+        const res = exec({ type: "SETUP_TEAMS", ts, teams, options });
         if (res.ok) {
           for (const id of [...sessions.keys()]) store.setSession(id, null);
           sessions.clear();

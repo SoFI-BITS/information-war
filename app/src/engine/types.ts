@@ -2,7 +2,7 @@
 
 export type Side = "BUY" | "SELL";
 export type OrderType = "LIMIT" | "MARKET";
-export type Phase = "LOBBY" | "NEWS" | "TRADING" | "SETTLING" | "FINISHED";
+export type Phase = "LOBBY" | "BRIEFING" | "NEWS" | "TRADING" | "SETTLING" | "FINISHED";
 export type OrderStatus = "OPEN" | "PARTIAL" | "FILLED" | "CANCELLED" | "UNFILLED";
 export type Reliability = "ACCURATE" | "INCOMPLETE" | "OUTDATED" | "MISLEADING";
 export type Direction = "UP" | "DOWN";
@@ -29,7 +29,8 @@ export interface ScenarioParams {
   tradingSeconds: number;
   settleSeconds: number;
   maxPositionValuePerStock: number;
-  maxOrderNotional: number;
+  /** Max value of a single buy order (credits). Sell orders have no value cap. */
+  maxBuyOrderNotional: number;
   maxOpenOrders: number;
   rateLimit: { count: number; windowSeconds: number };
   marketOrderCollarPct: number;
@@ -41,6 +42,20 @@ export interface ScenarioParams {
   forecastPoints: number;
 }
 
+export interface CompanyProfile {
+  founded: number;
+  headquarters: string;
+  employees: string;
+  revenue: string;
+  margin: string;
+  debt: string;
+  dividend: string;
+  revenueMix: string;
+  overview: string;
+  /** Neutral open questions; must not give away the narrative. */
+  watch: string[];
+}
+
 export interface ScenarioStock {
   ticker: string;
   name: string;
@@ -49,7 +64,19 @@ export interface ScenarioStock {
   startPrice: number;
   volatility: string;
   links: string;
+  profile?: CompanyProfile;
 }
+
+/** Organiser choices made when registering teams. Recorded in the SETUP_TEAMS command so replays match. */
+export interface EventOptions {
+  /** Company-study period before Round 1, in seconds (0 = none). */
+  briefingSeconds: number;
+  /** true: cash plus a holding in every stock; false: all cash, zero holdings. */
+  startWithHoldings: boolean;
+}
+
+/** Behaviour before these options existed; used when a replayed SETUP_TEAMS has none. */
+export const LEGACY_OPTIONS: EventOptions = { briefingSeconds: 0, startWithHoldings: true };
 
 export interface ScenarioSignal {
   id: string;
@@ -195,7 +222,7 @@ interface Base {
   ts: number;
 }
 export type Command =
-  | (Base & { type: "SETUP_TEAMS"; teams: Omit<Team, "group">[] })
+  | (Base & { type: "SETUP_TEAMS"; teams: Omit<Team, "group">[]; options?: EventOptions })
   | (Base & { type: "START" })
   | (Base & { type: "ADVANCE"; actor?: string })
   | (Base & { type: "PAUSE" })

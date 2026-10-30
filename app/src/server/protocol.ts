@@ -16,7 +16,17 @@ export const TeamCommand = z.discriminatedUnion("type", [
 export type TeamCommand = z.infer<typeof TeamCommand>;
 
 export const AdminCommand = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("SETUP_TEAMS"), count: z.number().int().min(1).max(60), names: z.array(z.string().max(40)).optional() }),
+  z.object({
+    type: z.literal("SETUP_TEAMS"),
+    count: z.number().int().min(1).max(60),
+    names: z.array(z.string().max(40)).optional(),
+    options: z
+      .object({
+        briefingSeconds: z.number().int().min(0).max(1800),
+        startWithHoldings: z.boolean(),
+      })
+      .optional(),
+  }),
   z.object({ type: z.literal("START") }),
   z.object({ type: z.literal("ADVANCE") }),
   z.object({ type: z.literal("PAUSE") }),

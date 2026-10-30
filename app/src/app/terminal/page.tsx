@@ -63,29 +63,32 @@ export default function Terminal() {
         {pub.paused ? "Market paused by the organiser. The clock is stopped; no orders can be placed." : PHASE_LABEL[pub.phase]}
       </div>
       <main className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto p-2 lg:grid-cols-[300px_minmax(0,1fr)_320px] lg:overflow-hidden">
-        <div className="flex min-h-0 flex-col gap-2">
-          <div className="min-h-0 flex-[3]">
+        {/* Each panel scrolls internally; a column scrolls as a whole once its panels hit their minimum height. */}
+        <div className="scroll-thin flex min-h-0 flex-col gap-2 lg:overflow-y-auto">
+          <div className="flex min-h-64 flex-[3] flex-col *:flex-1">
             <Watchlist stocks={pub.stocks} selected={stock.ticker} onSelect={setSelected} holdings={holdings} />
           </div>
-          <div className="min-h-0 flex-[2]">
+          <div className="flex min-h-56 flex-[2] flex-col *:flex-1">
             <NewsFeed pub={pub} />
           </div>
         </div>
         <div className="scroll-thin flex min-h-0 flex-col gap-2 lg:overflow-y-auto">
-          <StockDetail stock={stock} />
-          <div className="grid min-h-0 grid-cols-1 gap-2 md:grid-cols-2">
+          <div className="shrink-0">
+            <StockDetail stock={stock} />
+          </div>
+          <div className="grid shrink-0 grid-cols-1 gap-2 md:grid-cols-2">
             <OrderBookPanel stock={stock} onPick={(price) => setPicked({ price, n: Date.now() })} />
             <OrderTicket stock={stock} team={team} pub={pub} emit={emit} pickedPrice={picked} />
           </div>
-          <div className="min-h-48 flex-1">
+          <div className="flex min-h-64 flex-1 flex-col *:flex-1">
             <Portfolio team={team} pub={pub} emit={emit} onSelect={setSelected} />
           </div>
         </div>
-        <div className="flex min-h-0 flex-col gap-2">
-          <div className="min-h-0 flex-[3]">
+        <div className="scroll-thin flex min-h-0 flex-col gap-2 lg:overflow-y-auto">
+          <div className="flex min-h-72 flex-[3] flex-col *:flex-1">
             <IntelPanel pub={pub} team={team} emit={emit} />
           </div>
-          <div className="min-h-0 flex-[2]">
+          <div className="flex min-h-48 flex-[2] flex-col *:flex-1">
             <TradeTape pub={pub} />
           </div>
         </div>

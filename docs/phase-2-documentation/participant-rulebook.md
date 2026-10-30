@@ -36,7 +36,7 @@ There are 10 rounds of 4 minutes each. The server clock controls everything; the
 ## 5. Limits (identical for every team)
 
 - No short selling, no borrowing, no leverage. You can only sell shares you own, and only buy with cash you have. Open orders reserve the cash or shares they need.
-- Maximum order value: 12,000 credits. Maximum open orders: 25.
+- Maximum buy order value: 25,000 credits per order. Sell orders have no value limit, and there is no limit on total trading in a round. Maximum open orders: 25.
 - Position limit: up to 30,000 credits per stock at its starting price (shown as a share limit in the terminal; includes open buy orders).
 - Limit prices must be within ±25% of the stock's reference value at the start of the round.
 - Up to 20 order actions per 10 seconds. Double clicks are recognised and executed only once.

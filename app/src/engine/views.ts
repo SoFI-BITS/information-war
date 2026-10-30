@@ -3,7 +3,7 @@
 // signal truth, group letters) can never leak to participants.
 import type { Market } from "./market";
 import type { Level } from "./orderbook";
-import type { Direction, LeaderboardRow } from "./types";
+import type { CompanyProfile, Direction, LeaderboardRow } from "./types";
 import { MM_ID } from "./types";
 import { rankTeams } from "./valuation";
 
@@ -18,6 +18,7 @@ export interface PublicStock {
   description: string;
   volatility: string;
   links: string;
+  profile: CompanyProfile | null;
   startPrice: number;
   rv: number;
   rvPrev: number;
@@ -85,6 +86,7 @@ export function publicView(m: Market, now: number): PublicView {
       description: s.description,
       volatility: s.volatility,
       links: s.links,
+      profile: s.profile ?? null,
       startPrice: Math.round(s.startPrice * 100),
       rv: m.rv[s.ticker],
       rvPrev: prev[s.ticker],
@@ -133,7 +135,7 @@ export function publicView(m: Market, now: number): PublicView {
     debrief: m.debriefRevealed ? debrief(m) : null,
     rules: {
       startingCapital: p.startingCapital,
-      maxOrderNotional: p.maxOrderNotional,
+      maxBuyOrderNotional: p.maxBuyOrderNotional,
       maxOpenOrders: p.maxOpenOrders,
       marketOrderCollarPct: p.marketOrderCollarPct,
       limitPriceBandPct: p.limitPriceBandPct,
@@ -141,6 +143,8 @@ export function publicView(m: Market, now: number): PublicView {
       newsSeconds: p.newsSeconds,
       tradingSeconds: p.tradingSeconds,
       settleSeconds: p.settleSeconds,
+      briefingSeconds: m.options.briefingSeconds,
+      startWithHoldings: m.options.startWithHoldings,
     },
   };
 }
@@ -270,6 +274,7 @@ export function adminView(m: Market, now: number) {
     tradeCount: m.trades.filter((t) => !t.voided).length,
     summaries: m.summaries,
     audit: m.audit.slice(-150).reverse(),
+    options: m.options,
     round_: next ? { title: next.title, purpose: next.purpose, hiddenState: next.hiddenState, signals: next.signals } : null,
   };
 }

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { describe, it } from "node:test";
 import { loadScenario } from "../scenario/load";
 import { Market } from "./market";
-import type { Command, Scenario, Side } from "./types";
+import type { Command, EventOptions, Scenario, Side } from "./types";
 import { rankTeams, referenceValue } from "./valuation";
 import { publicView } from "./views";
 
@@ -19,7 +19,7 @@ function scenario({ mm = false } = {}): Scenario {
 }
 
 /** Market with n teams, already in round 1 TRADING. */
-function setup(n = 6, opts = {}) {
+function setup(n = 6, opts: { mm?: boolean; options?: EventOptions } = {}) {
   const m = new Market(scenario(opts));
   let ts = 1_000_000;
   const log: Command[] = [];
@@ -29,8 +29,9 @@ function setup(n = 6, opts = {}) {
     if (res.ok && !res.duplicate) log.push(cmd);
     return res;
   };
-  run({ type: "SETUP_TEAMS", teams: Array.from({ length: n }, (_, i) => ({ id: `t${i + 1}`, number: i + 1, name: `Team ${i + 1}`, code: `CODE${i + 1}` })) });
+  run({ type: "SETUP_TEAMS", teams: Array.from({ length: n }, (_, i) => ({ id: `t${i + 1}`, number: i + 1, name: `Team ${i + 1}`, code: `CODE${i + 1}` })), options: opts.options });
   run({ type: "START" });
+  if (m.phase === "BRIEFING") run({ type: "ADVANCE" });
   run({ type: "ADVANCE" });
   const order = (team: number, side: Side, qty: number, price?: number, extra: Record<string, unknown> = {}) =>
     run({ type: "PLACE_ORDER", teamId: `t${team}`, orderId: randomUUID(), ticker: "NVTX", side, orderType: price ? "LIMIT" : "MARKET", price, qty, ...extra });
@@ -117,7 +118,7 @@ describe("risk checks", () => {
   it("enforces the limit-price band and order notional cap", () => {
     const { order } = setup();
     assert.equal(order(1, "BUY", 1, 10000).ok, false); // > 25% below 142
-    assert.equal(order(1, "BUY", 90, 14200).ok, false); // 12,780 > 12,000
+    assert.equal(order(1, "BUY", 180, 14200).ok, false); // 25,560 > 25,000 buy cap
   });
 
   it("rejects trading outside the trading phase", () => {
@@ -278,5 +279,62 @@ describe("market maker", () => {
     order(1, "BUY", 80);
     assert.ok(book.best("SELL")!.price > ask0, "ask rises after buying");
     assert.ok(m.mmNet.NVTX > 0);
+  });
+});
+
+describe("event options", () => {
+  const opts = (o: Partial<EventOptions>): EventOptions => ({ briefingSeconds: 0, startWithHoldings: true, ...o });
+
+  it("runs a timed company briefing before Round 1 with trading closed", () => {
+    const m = new Market(scenario());
+    m.apply({ ts: 1000, type: "SETUP_TEAMS", teams: [{ id: "t1", number: 1, name: "T1", code: "C1" }], options: opts({ briefingSeconds: 300 }) });
+    m.apply({ ts: 2000, type: "START" });
+    assert.equal(m.phase, "BRIEFING");
+    assert.equal(m.round, 0);
+    assert.equal(m.phaseEndsAt, 2000 + 300_000);
+    assert.equal(m.isDue(2000 + 299_999), false);
+    assert.equal(m.isDue(2000 + 300_000), true);
+    const res = m.apply({ ts: 3000, type: "PLACE_ORDER", teamId: "t1", orderId: randomUUID(), ticker: "NVTX", side: "BUY", orderType: "LIMIT", price: 14200, qty: 1 });
+    assert.equal(res.ok, false);
+    assert.equal(publicView(m, 3000).news.length, 0, "no round news during the briefing");
+    assert.equal(m.apply({ ts: 4000, type: "PAUSE" }).ok, true);
+    assert.equal(m.apply({ ts: 5000, type: "RESUME" }).ok, true);
+    m.apply({ ts: 400_000, type: "ADVANCE" });
+    assert.equal(m.phase, "NEWS");
+    assert.equal(m.round, 1);
+  });
+
+  it("can start every team with zero holdings and all capital in cash", () => {
+    const { acc, m } = setup(2, { options: opts({ startWithHoldings: false }) });
+    for (const t of m.tickers) assert.equal(acc(1).positions[t].shares, 0);
+    assert.equal(acc(1).cash, m.params.startingCapital * 100);
+    assert.equal(m.equityOf("t1").equity, m.params.startingCapital * 100);
+    assert.equal(acc(1).positions.NVTX.shares - acc(1).reservedShares.NVTX, 0, "nothing to sell");
+  });
+
+  it("caps each buy order at 25,000 credits; sells and round totals are unlimited", () => {
+    const { m, order, acc } = setup(3);
+    assert.equal(m.params.maxBuyOrderNotional, 25000);
+    const over = order(1, "BUY", 177, 14200); // 25,134
+    assert.equal(over.ok, false);
+    assert.match(over.error!, /Buy order value exceeds the 25,000/);
+    assert.equal(order(1, "BUY", 176, 14200).ok, true); // 24,992
+    // A large holding can be sold in one order worth more than 25,000.
+    acc(2).positions.NVTX.shares = 200;
+    assert.equal(order(2, "SELL", 200, 14300).ok, true); // 28,600
+    // No per-round cap: several near-limit buys in the same round are accepted.
+    acc(3).cash += 10_000_000;
+    m.maxShares.HBFG = 10_000;
+    const buy = (qty: number, price: number) => m.apply({ ts: 2_000_000, type: "PLACE_ORDER", teamId: "t3", orderId: randomUUID(), ticker: "HBFG", side: "BUY", orderType: "LIMIT", price, qty });
+    for (let i = 0; i < 3; i++) assert.equal(buy(280, 8800 - i * 10).ok, true); // ~24,600 each
+  });
+
+  it("replays to the same state with options recorded in the log", () => {
+    const { m, log, order } = setup(3, { options: opts({ startWithHoldings: false, briefingSeconds: 60 }) });
+    order(1, "BUY", 20, 14300);
+    order(2, "SELL", 5, 14100);
+    const copy = new Market(scenario());
+    for (const c of log) copy.apply(c);
+    assert.equal(copy.fingerprint(), m.fingerprint());
   });
 });

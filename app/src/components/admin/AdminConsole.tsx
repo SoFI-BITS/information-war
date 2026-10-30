@@ -21,6 +21,8 @@ export function AdminConsole({ admin, pub, offset, connected, adminKey, emit, on
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [teamCount, setTeamCount] = useState("24");
   const [names, setNames] = useState("");
+  const [briefingMin, setBriefingMin] = useState("5");
+  const [zeroHoldings, setZeroHoldings] = useState(false);
   const [note, setNote] = useState("");
   const h = admin.health as AdminState["health"] & { competitionId: string; store: string; scenarioHash: string; scenarioLocked: string | null; uptimeSec: number; memoryMb: number; commands: number; persistencePending: number; persistenceError: string | null; lastSeen: Record<string, number> };
 
@@ -45,6 +47,8 @@ export function AdminConsole({ admin, pub, offset, connected, adminKey, emit, on
   }
 
   const inRound = ["NEWS", "TRADING", "SETTLING"].includes(admin.phase);
+  const timed = inRound || admin.phase === "BRIEFING";
+  const opts = admin.options;
   const connectedTeams = Object.values(h.connections).filter((n) => n > 0).length;
 
   return (
@@ -81,7 +85,7 @@ export function AdminConsole({ admin, pub, offset, connected, adminKey, emit, on
       </header>
 
       <section className="panel flex flex-wrap items-center gap-2 p-3">
-        <button className="btn bg-up text-black" disabled={admin.phase !== "LOBBY" || !admin.teams.length} onClick={() => send({ type: "START" }, "Start Round 1 now? The scenario is locked from this point.")}>
+        <button className="btn bg-up text-black" disabled={admin.phase !== "LOBBY" || !admin.teams.length} onClick={() => send({ type: "START" }, `${opts.briefingSeconds ? `Start the ${Math.round((opts.briefingSeconds / 60) * 10) / 10}-minute company briefing now? Round 1 follows automatically.` : "Start Round 1 now?"} The scenario is locked from this point.`)}>
           Start event
         </button>
         {admin.paused ? (
@@ -89,11 +93,11 @@ export function AdminConsole({ admin, pub, offset, connected, adminKey, emit, on
             Resume
           </button>
         ) : (
-          <button className="btn bg-accent text-black" disabled={!inRound} onClick={() => send({ type: "PAUSE" })}>
+          <button className="btn bg-accent text-black" disabled={!timed} onClick={() => send({ type: "PAUSE" })}>
             Pause
           </button>
         )}
-        <button className="btn-ghost" disabled={!inRound || admin.paused} onClick={() => send({ type: "ADVANCE" }, `End the current ${admin.phase} phase now?`)}>
+        <button className="btn-ghost" disabled={!timed || admin.paused} onClick={() => send({ type: "ADVANCE" }, `End the current ${admin.phase} phase now?`)}>
           Skip to next phase
         </button>
         <button className="btn-ghost text-accent" disabled={!inRound} onClick={() => withReason("RESTART_ROUND", "Void and restart this round? All its trades are reversed. Reason (logged):")}>
@@ -125,12 +129,37 @@ export function AdminConsole({ admin, pub, offset, connected, adminKey, emit, on
         <section className="panel space-y-2 p-3">
           <h2 className="text-sm font-semibold">Register teams</h2>
           <p className="text-xs text-muted">Creates the team list and login codes (replaces any existing list and signs everyone out). Teams are assigned to intel groups A–F by number.</p>
+          <div className="flex flex-wrap items-end gap-4 text-xs">
+            <label className="text-muted">
+              Company briefing before Round 1 (minutes, 0 = none)
+              <input className="input mt-0.5 w-24" inputMode="decimal" value={briefingMin} onChange={(e) => setBriefingMin(e.target.value.replace(/[^0-9.]/g, ""))} />
+            </label>
+            <label className="flex items-center gap-2 pb-2">
+              <input type="checkbox" checked={zeroHoldings} onChange={(e) => setZeroHoldings(e.target.checked)} />
+              Start with zero holdings (all starting capital in cash)
+            </label>
+          </div>
+          {admin.teams.length > 0 && (
+            <p className="text-xs text-muted">
+              Current registration: {opts.briefingSeconds ? `${Math.round((opts.briefingSeconds / 60) * 10) / 10} min briefing` : "no briefing"} · {opts.startWithHoldings ? "cash + holdings" : "zero holdings"}. Register again to change.
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             <input className="input w-24" value={teamCount} onChange={(e) => setTeamCount(e.target.value.replace(/\D/g, ""))} />
             <textarea className="input h-20 flex-1 font-sans" placeholder="Optional team names, one per line (in team-number order)" value={names} onChange={(e) => setNames(e.target.value)} />
             <button
               className="btn bg-info text-black"
-              onClick={() => send({ type: "SETUP_TEAMS", count: Number(teamCount), names: names.split("\n").map((s) => s.trim()).filter(Boolean) }, `Register ${teamCount} teams? Existing codes will stop working.`)}
+              onClick={() =>
+                send(
+                  {
+                    type: "SETUP_TEAMS",
+                    count: Number(teamCount),
+                    names: names.split("\n").map((s) => s.trim()).filter(Boolean),
+                    options: { briefingSeconds: Math.round(Number(briefingMin || 0) * 60), startWithHoldings: !zeroHoldings },
+                  },
+                  `Register ${teamCount} teams? Existing codes will stop working.`,
+                )
+              }
             >
               Register teams
             </button>

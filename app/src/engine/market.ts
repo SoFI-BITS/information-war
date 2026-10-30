@@ -6,6 +6,7 @@ import type {
   CommandResult,
   Direction,
   EngineEvent,
+  EventOptions,
   MarketMakerParams,
   Order,
   Phase,
@@ -16,13 +17,16 @@ import type {
   Team,
   Trade,
 } from "./types";
-import { MM_ID } from "./types";
+import { LEGACY_OPTIONS, MM_ID } from "./types";
 import { markToMarket, maxDrawdownPct, rankTeams, referenceValue } from "./valuation";
 
 class Reject extends Error {}
 const reject = (msg: string): never => {
   throw new Reject(msg);
 };
+
+/** Phases the server clock runs (and the organiser can pause or skip). */
+export const TIMED_PHASES = ["BRIEFING", "NEWS", "TRADING", "SETTLING"];
 
 interface RoundStartState {
   accounts: Map<string, Account>;
@@ -57,6 +61,7 @@ export class Market {
   pausedRemainingMs = 0;
   debriefRevealed = false;
   finishedReason: string | null = null;
+  options: EventOptions = { ...LEGACY_OPTIONS };
 
   teams: Team[] = [];
   readonly teamById = new Map<string, Team>();
@@ -137,17 +142,21 @@ export class Market {
   private dispatch(cmd: Command): unknown {
     switch (cmd.type) {
       case "SETUP_TEAMS":
-        return this.setupTeams(cmd.teams, cmd.ts);
+        return this.setupTeams(cmd.teams, cmd.ts, cmd.options ?? LEGACY_OPTIONS);
       case "START":
         if (this.phase !== "LOBBY") reject("Event already started");
         if (this.teams.length === 0) reject("No teams registered");
         this.log(cmd.ts, "admin", "START", `Event started with ${this.teams.length} teams`);
-        this.startRound(1, cmd.ts);
+        if (this.options.briefingSeconds > 0) {
+          this.phase = "BRIEFING";
+          this.phaseEndsAt = cmd.ts + this.options.briefingSeconds * 1000;
+          this.log(cmd.ts, "clock", "BRIEFING", `Company briefing: ${Math.round(this.options.briefingSeconds / 60 * 10) / 10} min before Round 1`);
+        } else this.startRound(1, cmd.ts);
         return null;
       case "ADVANCE":
         return this.advance(cmd.ts, cmd.actor ?? "admin");
       case "PAUSE":
-        if (!["NEWS", "TRADING", "SETTLING"].includes(this.phase) || this.paused) reject("Nothing to pause");
+        if (!TIMED_PHASES.includes(this.phase) || this.paused) reject("Nothing to pause");
         // At least 30 s remain after a resume, so an auto-pause after a restart never resumes into an instant close.
         this.pausedRemainingMs = Math.max(30_000, (this.phaseEndsAt ?? cmd.ts) - cmd.ts);
         this.paused = true;
@@ -194,8 +203,10 @@ export class Market {
   }
 
   // ============================================================== lifecycle
-  private setupTeams(teams: Omit<Team, "group">[], ts: number) {
+  private setupTeams(teams: Omit<Team, "group">[], ts: number, options: EventOptions) {
     if (this.phase !== "LOBBY") reject("Teams can only be registered in the lobby");
+    this.options = { ...options };
+    const holdings = options.startWithHoldings;
     const groups = this.params.groups;
     this.teams = teams.map((t) => ({ ...t, group: groups[(t.number - 1) % groups.length] }));
     this.teamById.clear();
@@ -205,12 +216,12 @@ export class Market {
       const positions: Account["positions"] = {};
       const reservedShares: Account["reservedShares"] = {};
       for (const s of this.scenario.stocks) {
-        positions[s.ticker] = { shares: this.endowment[s.ticker], avgCost: Math.round(s.startPrice * 100), realized: 0 };
+        positions[s.ticker] = { shares: holdings ? this.endowment[s.ticker] : 0, avgCost: Math.round(s.startPrice * 100), realized: 0 };
         reservedShares[s.ticker] = 0;
       }
       this.accounts.set(t.id, {
         teamId: t.id,
-        cash: this.startingCash,
+        cash: holdings ? this.startingCash : this.params.startingCapital * 100,
         reservedCash: 0,
         positions,
         reservedShares,
@@ -224,7 +235,11 @@ export class Market {
       this.openByTeam.set(t.id, new Set());
     }
     this.outbox.push({ kind: "TEAMS", teams: this.teams });
-    this.log(ts, "admin", "SETUP_TEAMS", `${this.teams.length} teams registered`);
+    const opts = [
+      options.briefingSeconds ? `${Math.round(options.briefingSeconds / 60 * 10) / 10} min briefing` : "no briefing",
+      holdings ? "cash + holdings" : "all cash, zero holdings",
+    ];
+    this.log(ts, "admin", "SETUP_TEAMS", `${this.teams.length} teams registered (${opts.join("; ")})`);
     return { teams: this.teams.length };
   }
 
@@ -251,6 +266,9 @@ export class Market {
   private advance(ts: number, actor: string) {
     if (this.paused) reject("Paused");
     switch (this.phase) {
+      case "BRIEFING":
+        this.startRound(1, ts);
+        return null;
       case "NEWS":
         this.phase = "TRADING";
         this.phaseEndsAt = ts + this.params.tradingSeconds * 1000;
@@ -271,7 +289,7 @@ export class Market {
 
   /** Is the current phase past its deadline? The server clock calls ADVANCE when true. */
   isDue(now: number): boolean {
-    return !this.paused && this.phaseEndsAt !== null && now >= this.phaseEndsAt && ["NEWS", "TRADING", "SETTLING"].includes(this.phase);
+    return !this.paused && this.phaseEndsAt !== null && now >= this.phaseEndsAt && TIMED_PHASES.includes(this.phase);
   }
 
   private settle(ts: number, actor: string) {
@@ -402,6 +420,12 @@ export class Market {
     return n;
   }
 
+  /** Buy orders are capped per order; sells are limited only by shares held. */
+  private checkBuyNotional(value: number) {
+    const cap = this.params.maxBuyOrderNotional;
+    if (value > cap * 100) reject(`Buy order value exceeds the ${cap.toLocaleString()} credit limit per order`);
+  }
+
   private placeOrder(cmd: Extract<Command, { type: "PLACE_ORDER" }>) {
     const { teamId, ticker, side, orderType, qty, ts } = cmd;
     const acc = this.requireTeam(teamId);
@@ -435,9 +459,9 @@ export class Market {
       }
       limit = side === "BUY" ? Math.ceil(best.price * (1 + collar)) : Math.floor(best.price * (1 - collar));
     }
-    if (qty * limit > this.params.maxOrderNotional * 100) reject(`Order value exceeds the ${this.params.maxOrderNotional.toLocaleString()} limit`);
     const pos = acc.positions[ticker];
     if (side === "BUY") {
+      this.checkBuyNotional(qty * limit);
       if (qty * limit > acc.cash - acc.reservedCash) reject("Insufficient available cash");
       if (pos.shares + this.openBuyShares(teamId, ticker) + qty > this.maxShares[ticker]) reject(`Position limit: max ${this.maxShares[ticker]} shares of ${ticker} (including open buy orders)`);
     } else if (qty > pos.shares - acc.reservedShares[ticker]) {
@@ -598,9 +622,9 @@ export class Market {
     if (!Number.isInteger(newQty) || newQty < 1) reject("Quantity must be a whole number of shares");
     if (newPrice === o.price && newQty === o.remaining) reject("Nothing to change");
     this.checkPrice(o.ticker, newPrice);
-    if (newQty * newPrice > this.params.maxOrderNotional * 100) reject(`Order value exceeds the ${this.params.maxOrderNotional.toLocaleString()} limit`);
     const pos = acc.positions[o.ticker];
     if (o.side === "BUY") {
+      this.checkBuyNotional(newQty * newPrice);
       const extra = newQty * newPrice - o.remaining * o.price;
       if (extra > acc.cash - acc.reservedCash) reject("Insufficient available cash");
       if (pos.shares + this.openBuyShares(teamId, o.ticker, o.id) + newQty > this.maxShares[o.ticker]) reject(`Position limit: max ${this.maxShares[o.ticker]} shares of ${o.ticker}`);
@@ -650,7 +674,7 @@ export class Market {
   /** Which round's forecast is open right now (submissions lock when trading opens). */
   openForecastRound(): number | null {
     const candidate =
-      this.phase === "NEWS" ? this.round : this.phase === "SETTLING" ? this.round + 1 : this.phase === "LOBBY" ? 1 : null;
+      this.phase === "NEWS" ? this.round : this.phase === "SETTLING" ? this.round + 1 : this.phase === "LOBBY" || this.phase === "BRIEFING" ? 1 : null;
     if (!candidate || candidate > this.params.rounds) return null;
     return this.scenario.rounds[candidate - 1].forecast ? candidate : null;
   }

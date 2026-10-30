@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import type { PublicView, TeamView } from "@/engine/views";
 import { change, clock, money, pct, signedMoney, tone } from "@/lib/format";
+import { CompanyBriefing } from "./Companies";
 
 type Debrief = { rounds: { round: number; title: string; hiddenState: string; fundamentals: Record<string, number>; signals: { ticker: string; text: string; reliability: string; truth: string; source: string }[] }[] };
 
 export function TopBar({ pub, team, seconds, connected }: { pub: PublicView; team: TeamView; seconds: number | null; connected: boolean }) {
-  const phaseTone = pub.phase === "TRADING" ? "bg-up text-black" : pub.phase === "NEWS" ? "bg-accent text-black" : "bg-panel-2 text-muted";
+  const phaseTone = pub.phase === "TRADING" ? "bg-up text-black" : pub.phase === "NEWS" ? "bg-accent text-black" : pub.phase === "BRIEFING" ? "bg-info text-black" : "bg-panel-2 text-muted";
   const ret = team.returnPct;
+  const [companies, setCompanies] = useState(false);
   return (
     <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-line bg-panel px-4 py-2">
       <div>
@@ -17,11 +19,20 @@ export function TopBar({ pub, team, seconds, connected }: { pub: PublicView; tea
       <div className="flex items-center gap-3">
         <span className={`rounded px-2 py-1 text-xs font-bold uppercase ${phaseTone}`}>{pub.paused ? "Paused" : pub.phase === "LOBBY" ? "Lobby" : pub.phase}</span>
         <div>
-          <p className="text-[10px] text-muted uppercase">{pub.round ? `Round ${pub.round} / ${pub.totalRounds}` : "Not started"}</p>
-          <p className="text-sm font-semibold">{pub.roundTitle ?? "—"}</p>
+          <p className="text-[10px] text-muted uppercase">{pub.round ? `Round ${pub.round} / ${pub.totalRounds}` : pub.phase === "BRIEFING" ? "Before Round 1" : "Not started"}</p>
+          <p className="text-sm font-semibold">{pub.roundTitle ?? (pub.phase === "BRIEFING" ? "Company briefing" : "—")}</p>
         </div>
         <p className={`num text-3xl font-bold ${seconds !== null && seconds <= 20 && pub.phase === "TRADING" ? "text-down" : ""}`}>{clock(seconds)}</p>
+        <button className="btn-ghost text-xs" onClick={() => setCompanies(true)}>
+          Company profiles
+        </button>
       </div>
+      {companies && (
+        <Modal wide onClose={() => setCompanies(false)}>
+          <h2 className="mb-3 text-xl font-bold">Company profiles</h2>
+          <CompanyBriefing stocks={pub.stocks} />
+        </Modal>
+      )}
       <div className="ml-auto flex gap-6 text-right">
         <Stat label="Equity" value={money(team.equity)} />
         <Stat label="Return" value={pct(ret)} className={tone(ret)} />
@@ -43,10 +54,10 @@ function Stat({ label, value, sub, className = "" }: { label: string; value: str
   );
 }
 
-function Modal({ children, onClose }: { children: React.ReactNode; onClose?: () => void }) {
+function Modal({ children, onClose, wide = false }: { children: React.ReactNode; onClose?: () => void; wide?: boolean }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="panel scroll-thin relative max-h-[90vh] w-full max-w-3xl overflow-y-auto p-5">
+      <div className={`panel scroll-thin relative max-h-[90vh] w-full overflow-y-auto p-5 ${wide ? "max-w-7xl" : "max-w-3xl"}`}>
         {onClose && (
           <button onClick={onClose} className="absolute top-3 right-3 text-muted hover:text-text" aria-label="Close">
             ✕
@@ -65,19 +76,34 @@ export function PhaseOverlay({ pub, team }: { pub: PublicView; team: TeamView })
   if (dismissed === key) return null;
   const close = () => setDismissed(key);
 
+  const r = pub.rules as { startingCapital: number; maxBuyOrderNotional: number; tradingSeconds: number; briefingSeconds: number; startWithHoldings: boolean };
   if (pub.phase === "LOBBY") {
-    const r = pub.rules as { startingCapital: number; maxOrderNotional: number; tradingSeconds: number };
     return (
       <Modal onClose={close}>
         <h2 className="text-xl font-bold">Welcome, {team.team.name}</h2>
-        <p className="mt-1 text-sm text-muted">Waiting for the organiser to start Round 1. You can explore the terminal; trading is disabled.</p>
+        <p className="mt-1 text-sm text-muted">
+          Waiting for the organiser to start. {r.briefingSeconds ? `The event opens with a ${Math.round((r.briefingSeconds / 60) * 10) / 10}-minute company briefing before Round 1.` : ""} You can explore the terminal; trading is disabled.
+        </p>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">
-          <li>You start with {r.startingCapital.toLocaleString()} credits: cash plus a holding in every stock.</li>
+          <li>{r.startWithHoldings ? `You start with ${r.startingCapital.toLocaleString()} credits: cash plus a holding in every stock.` : `You start with ${r.startingCapital.toLocaleString()} credits, all in cash. You hold no shares until you buy them.`}</li>
           <li>10 rounds: 20 s of news, {Math.round(r.tradingSeconds / 60 * 10) / 10} min of trading, 20 s of settlement.</li>
           <li>Your score is <b>equity = cash + shares × reference value</b>. The last traded price does not set your score.</li>
-          <li>No short selling, no borrowing. Max {r.maxOrderNotional.toLocaleString()} credits per order. Open orders are cancelled at each round end.</li>
+          <li>No short selling, no borrowing. Max {r.maxBuyOrderNotional.toLocaleString()} credits per buy order; sell orders have no value limit, and there is no limit on how much you trade in a round. Open orders are cancelled at each round end.</li>
           <li>Private intelligence may be accurate, incomplete, outdated or misleading.</li>
         </ul>
+      </Modal>
+    );
+  }
+
+  if (pub.phase === "BRIEFING") {
+    return (
+      <Modal wide onClose={close}>
+        <p className="text-xs font-semibold tracking-widest text-info uppercase">Company briefing · before Round 1</p>
+        <h2 className="text-xl font-bold">Study the ten companies</h2>
+        <p className="mt-1 mb-3 text-sm text-muted">
+          Trading is closed. Round 1 news is released when the clock ends. Profiles describe each business as it stands today; they do not predict what happens next. Reopen this any time from <b>Company profiles</b> in the top bar.
+        </p>
+        <CompanyBriefing stocks={pub.stocks} />
       </Modal>
     );
   }

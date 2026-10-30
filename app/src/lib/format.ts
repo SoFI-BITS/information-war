@@ -15,6 +15,7 @@ export const tone = (x: number) => (x > 0 ? "text-up" : x < 0 ? "text-down" : "t
 
 export const PHASE_LABEL: Record<string, string> = {
   LOBBY: "Waiting to start",
+  BRIEFING: "Company briefing — study the companies; trading opens after Round 1 news",
   NEWS: "News — read the briefing",
   TRADING: "Trading open",
   SETTLING: "Round closed — settling",

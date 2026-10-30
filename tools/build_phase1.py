@@ -206,7 +206,7 @@ def build_xlsx():
         ("Starting cash", P["startingCash"], "Nominal cash component. Actual cash = capital − endowment value, so every team starts at exactly the starting capital.", "#,##0"),
         ("Endowment per stock", P["endowmentPerStock"], "Credits of each stock given at start (shares = value / start price, rounded).", "#,##0"),
         ("Max position value per stock", P["maxPositionValuePerStock"], "Share cap = INT(this / start price). Fixed for the event.", "#,##0"),
-        ("Max order notional", P["maxOrderNotional"], "Quantity × price per order.", "#,##0"),
+        ("Max buy order value", P["maxBuyOrderNotional"], "Quantity × price per buy order. Sell orders are not capped.", "#,##0"),
         ("Max open orders per team", P["maxOpenOrders"], "", "0"),
         ("Market order collar", P["marketOrderCollarPct"] / 100, "Market orders fill only within this % of the best opposite price at submission.", "0.0%"),
         ("Research credits per team", P["researchCredits"], "For the whole event; separate from cash.", "0"),

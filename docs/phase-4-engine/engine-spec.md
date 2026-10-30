@@ -17,7 +17,7 @@ Code: [`app/src/engine/`](../../app/src/engine/). Tests: `npm test` (21 tests). 
 | Idempotency | A repeated `clientOrderId` returns the original result with no change |
 | Limit price band | ±25% of the round's opening RV |
 | Market order | IOC. Its limit is the *collar*: best opposite price × (1 ± 3%). The unfilled remainder is cancelled. With an empty opposite side the order is UNFILLED and nothing changes. |
-| Notional | qty × (limit or collar) ≤ 12,000 credits |
+| Notional | buy orders: qty × (limit or collar) ≤ 25,000 credits; sell orders uncapped |
 | Buy checks | qty × price ≤ cash − reserved cash · shares + open buy qty + qty ≤ share cap |
 | Sell checks | qty ≤ shares − shares reserved by open sells (no shorting) |
 | Reserve | A buy reserves qty × limit cash. A sell reserves qty shares. |

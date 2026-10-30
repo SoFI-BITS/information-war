@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Hide the Next.js "N" dev badge; it overlaps the terminal's bottom-left panel.
+  devIndicators: false,
   outputFileTracingRoot: path.dirname(fileURLToPath(import.meta.url)),
 };
 
