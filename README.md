@@ -1,7 +1,7 @@
 # The Information War
 
 A 48-minute trading-floor simulation competition: 20–30 teams trade 10 fictional stocks over 10 four-minute rounds, using incomplete, uneven and sometimes misleading information.
-
+ 
 ## What's here
 
 | Phase | Deliverable | Location |
