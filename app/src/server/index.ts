@@ -16,7 +16,7 @@ import { adminView, publicView, teamView } from "../engine/views";
 import { DEFAULT_SCENARIO_PATH, loadScenario } from "../scenario/load";
 import { exportCsv } from "./exports";
 import { AdminCommand, TeamCommand, toCents } from "./protocol";
-import { currentCompetitionId, FileStore, PrismaStore, setCurrentCompetitionId, type Store } from "./store";
+import { FileStore, PrismaStore, setCurrentCompetitionId, startupCompetitionId, type Store } from "./store";
 
 loadDotEnv();
 const PROD = process.argv.includes("--prod");
@@ -82,7 +82,7 @@ function exec(cmd: Command) {
 
 // ---------------------------------------------------------------- http
 async function main() {
-  await openCompetition(currentCompetitionId());
+  await openCompetition(await startupCompetitionId());
   const app = next({ dev: !PROD });
   const handle = app.getRequestHandler();
   await app.prepare();

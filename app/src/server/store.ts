@@ -33,6 +33,24 @@ export function currentCompetitionId(): string {
   return setCurrentCompetitionId(`comp-${new Date().toISOString().slice(0, 10)}-${Date.now().toString(36)}`);
 }
 
+/**
+ * Hosts like Render and Railway wipe data/ on every deploy. With Postgres and no
+ * local pointer, resume the newest competition in the database instead of starting a new one.
+ */
+export async function startupCompetitionId(): Promise<string> {
+  if (process.env.DATABASE_URL && !existsSync(path.join(DATA_DIR, "current.json"))) {
+    const { PrismaClient } = await import("@prisma/client");
+    const db = new PrismaClient();
+    try {
+      const row = await db.competition.findFirst({ orderBy: { createdAt: "desc" }, select: { id: true } });
+      if (row) return setCurrentCompetitionId(row.id);
+    } finally {
+      await db.$disconnect();
+    }
+  }
+  return currentCompetitionId();
+}
+
 export function setCurrentCompetitionId(id: string) {
   mkdirSync(DATA_DIR, { recursive: true });
   writeFileSync(path.join(DATA_DIR, "current.json"), JSON.stringify({ id }));

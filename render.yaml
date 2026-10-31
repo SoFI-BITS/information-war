@@ -1,0 +1,24 @@
+# Render Blueprint: New > Blueprint, pick this repo.
+# The market is one long-running Node process (Next.js + Socket.IO + engine).
+# It keeps state in memory, so it must run as exactly one instance and never sleep.
+services:
+  - type: web
+    name: information-war
+    runtime: node
+    rootDir: app
+    # The free plan sleeps after 15 idle minutes and drops every socket; use a paid plan on event day.
+    plan: starter
+    numInstances: 1
+    # devDependencies (prisma, tailwind, typescript) are needed for the build.
+    # migrate deploy is idempotent; it applies prisma/migrations over DIRECT_URL.
+    buildCommand: npm ci --include=dev && npm run build && npm run db:migrate
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: ADMIN_KEY
+        sync: false
+      # The disk is wiped on every deploy, so Postgres is required (e.g. Supabase pooler URLs).
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false

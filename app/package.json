@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "The Information War — trading-floor simulation competition",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "tsx src/server/index.ts",
     "build": "prisma generate && next build",

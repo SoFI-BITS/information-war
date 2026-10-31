@@ -43,6 +43,20 @@ npm run db:check        # integration check: projections + replay equality
 
 With Supabase (or another pooled host), set `DATABASE_URL` to the transaction pooler (port 6543, `?pgbouncer=true&connection_limit=1`) and `DIRECT_URL` to the session pooler (port 5432). Migrations run over `DIRECT_URL`. Percent-encode special characters in the password (`@` → `%40`). Outbound ports 5432 and 6543 must be open on the network you run from. Some venue and office networks block them; check with a hotspot, or apply `prisma/migrations/0001_init/migration.sql` in the Supabase SQL Editor instead.
 
+## Host it
+
+The server is one long-running Node process (Next.js pages, the Socket.IO channel and the engine's clock). Serverless hosts such as Vercel only serve the pages, so the terminal and organiser console sit on "Connecting…" forever. Use a host that runs `npm start` as a persistent process:
+
+- **Render:** New → Blueprint, pick this repo. [`render.yaml`](render.yaml) sets the root directory, build, start and health check. Fill in `ADMIN_KEY`, `DATABASE_URL` and `DIRECT_URL` when prompted.
+- **Railway:** New project → Deploy from GitHub repo, set the service's root directory to `app` ([`app/railway.json`](app/railway.json) holds the rest), then add the same three variables.
+
+On either host:
+
+- Run exactly **one** instance. State lives in memory; a second replica would be a second writer.
+- Use **PostgreSQL**. The disk is wiped on every deploy, so the file store would lose the event. With no local `data/current.json`, the server resumes the newest competition in the database.
+- Don't point a local `npm run dev` at the same database during the event. It is another writer for the same competition.
+- Avoid free plans that sleep when idle. Waking drops every socket, and a restart pauses the market until the organiser resumes it.
+
 ## Check it
 
 ```bash
